@@ -12,7 +12,6 @@ import android.os.Message
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import java.util.Timer
 
 class MainActivity : AppCompatActivity() {
 
@@ -20,26 +19,15 @@ class MainActivity : AppCompatActivity() {
     private var stopButton: Button? = null
     private var textView: TextView? = null
 
-    private var timerBinder: TimerService.TimerBinder? = null
+    private val defaultValue = 100
 
+    private var timerBinder: TimerService.TimerBinder? = null
     private var isBound = false
 
     private val timerHandler = object : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
             textView?.text = msg.what.toString()
-
-            val binder = timerBinder
-            if (binder != null) {
-                if (binder.isRunning) {
-                    startButton?.text = "Pause"
-                }
-                else if (binder.paused) {
-                    startButton?.text = "Unpause"
-                }
-                else {
-                    startButton?.text = "Start"
-                }
-            }
+            updateButtonText()
         }
     }
 
@@ -49,6 +37,14 @@ class MainActivity : AppCompatActivity() {
             isBound = true
 
             timerBinder?.setHandler(timerHandler)
+
+            val savedValue = timerBinder?.getSavedPausedValue() ?: -1
+            if (savedValue > 0) {
+                textView?.text = savedValue.toString()
+            } else {
+                textView?.text = defaultValue.toString()
+            }
+
             updateButtonText()
         }
 
@@ -70,14 +66,16 @@ class MainActivity : AppCompatActivity() {
             val binder = timerBinder
 
             if (binder != null) {
-                if (!binder.isRunning && !binder.paused) {
-                    binder.start(10)
-                }
-                else if (binder.isRunning) {
+                if (binder.isRunning) {
                     binder.pause()
-                }
-                else if (binder.paused) {
-                    binder.start(10)
+                } else {
+                    val savedValue = binder.getSavedPausedValue()
+
+                    if (savedValue > 0) {
+                        binder.start(savedValue)
+                    } else {
+                        binder.start(defaultValue)
+                    }
                 }
 
                 updateButtonText()
@@ -87,7 +85,7 @@ class MainActivity : AppCompatActivity() {
         stopButton?.setOnClickListener {
             timerBinder?.stop()
             textView?.text = "0"
-            startButton?.text = "Start"
+            updateButtonText()
         }
     }
 
@@ -112,18 +110,10 @@ class MainActivity : AppCompatActivity() {
 
         if (binder == null) {
             startButton?.text = "Start"
-        }
-        else if (binder.isRunning) {
+        } else if (binder.isRunning) {
             startButton?.text = "Pause"
-        }
-        else if (binder.paused) {
-            startButton?.text = "Unpause"
-        }
-        else {
+        } else {
             startButton?.text = "Start"
         }
     }
 }
-
-
-
